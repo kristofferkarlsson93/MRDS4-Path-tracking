@@ -2,101 +2,11 @@
 #Made by Jonatan Gustavsson, kv14jgn & Kristoffer Karlsson, kv14kkn
 #5DV121 HT16.
 # -*- coding: utf-8 -*-
-MRDS_URL = 'localhost:50000'
 
-import httplib, json, time
 from math import sin,cos,pi,atan2,sqrt
+from givenCode import *
 
-HEADERS = {"Content-type": "application/json", "Accept": "text/json"}
 
-def postSpeed(angularSpeed,linearSpeed):
-    """Sends a speed command to the MRDS server"""
-    mrds = httplib.HTTPConnection(MRDS_URL)
-    params = json.dumps({'TargetAngularSpeed':angularSpeed,'TargetLinearSpeed':linearSpeed})
-    mrds.request('POST','/lokarria/differentialdrive',params,HEADERS)
-    response = mrds.getresponse()
-    status = response.status
-    #response.close()
-    if status == 204:
-        return response
-    else:
-        raise UnexpectedResponse(response)
-    
-    
-def getPose():
-    """Reads the current position and orientation from the MRDS"""
-    mrds = httplib.HTTPConnection(MRDS_URL)
-    mrds.request('GET','/lokarria/localization')
-    response = mrds.getresponse()
-    if (response.status == 200):
-        poseData = response.read()
-        response.close()
-        return json.loads(poseData)
-    else:
-        return UnexpectedResponse(response)
-    
-def getLaser():
-    """Requests the current laser scan from the MRDS server and parses it into 
-    a dict"""
-    mrds = httplib.HTTPConnection(MRDS_URL)
-    mrds.request('GET','/lokarria/laser/echoes')
-    response = mrds.getresponse()
-    if (response.status == 200):
-        laserData = response.read()
-        response.close()
-        return json.loads(laserData)
-    else:
-        return response
-    
-def getBearing():
-    """Returns the XY Orientation as a bearing unit vector"""
-    return bearing(getPose()['Pose']['Orientation'])
-
-def bearing(q):
-    return rotate(q,{'X':1.0,'Y':0.0,"Z":0.0})
-
-def rotate(q,v):
-    return vector(qmult(qmult(q,quaternion(v)),conjugate(q)))
-
-def quaternion(v):
-    q=v.copy()
-    q['W']=0.0;
-    return q
-
-def vector(q):
-    v={}
-    v["X"]=q["X"]
-    v["Y"]=q["Y"]
-    v["Z"]=q["Z"]
-    return v
-
-def conjugate(q):
-    qc=q.copy()
-    qc["X"]=-q["X"]
-    qc["Y"]=-q["Y"]
-    qc["Z"]=-q["Z"]
-    return qc
-
-def qmult(q1,q2):
-    q={}
-    q["W"]=q1["W"]*q2["W"]-q1["X"]*q2["X"]-q1["Y"]*q2["Y"]-q1["Z"]*q2["Z"]
-    q["X"]=q1["W"]*q2["X"]+q1["X"]*q2["W"]+q1["Y"]*q2["Z"]-q1["Z"]*q2["Y"]
-    q["Y"]=q1["W"]*q2["Y"]-q1["X"]*q2["Z"]+q1["Y"]*q2["W"]+q1["Z"]*q2["X"]
-    q["Z"]=q1["W"]*q2["Z"]+q1["X"]*q2["Y"]-q1["Y"]*q2["X"]+q1["Z"]*q2["W"]
-    return q
-
-def getLaser():
-    """Requests the current laser scan from the MRDS server and parses it into a dict"""
-    mrds = httplib.HTTPConnection(MRDS_URL)
-    mrds.request('GET','/lokarria/laser/echoes')
-    response = mrds.getresponse()
-    if (response.status == 200):
-        laserData = response.read()
-        response.close()
-        return json.loads(laserData)
-    else:
-        return response
-    
 def path_menu():
     """Prints out a menu for the user. Takes the users input (an int). 
     Associates it with a filename.
@@ -186,11 +96,9 @@ def get_robot_angle():
     Input: none
     Output: The robots heading"""
     
-    rob_bearing = getBearing()
+    rob_bearing = getHeading()
     rob_angle = calc_angle(rob_bearing["Y"], rob_bearing["X"])
     return rob_angle
-    
-    
 
 
 def turn(rad, forw_speed):
@@ -199,6 +107,7 @@ def turn(rad, forw_speed):
     Input: a radian eg the turn speed and a forward speed
     output: none"""
     postSpeed(rad, forw_speed)
+    
     
 def get_laser_info():
     """Get information from the robots lasers and divids the info into a 
@@ -252,8 +161,6 @@ while counter !=len(path_cordinates):
     #The look ahead distance. If it is to short, check next point.
     if distance < 1.4:
         counter +=1
-    
-    
     else: 
         #Calculates the robots heading and the the total angle.
         robot_angle = get_robot_angle()
